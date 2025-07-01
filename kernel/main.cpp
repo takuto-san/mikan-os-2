@@ -30,6 +30,8 @@
 #include "window.hpp"
 #include "layer.hpp"
 #include "message.hpp"
+// day11b
+#include "timer.hpp"
 
 int printk(const char* format, ...) {
   va_list ap;
@@ -64,7 +66,7 @@ std::deque<Message>* main_queue;
 
 alignas(16) uint8_t kernel_main_stack[1024 * 1024];
 
-// #@@range_begin(main_function)
+// day11a
 extern "C" void KernelMainNewStack(
     const FrameBufferConfig& frame_buffer_config_ref,
     const MemoryMap& memory_map_ref) {
@@ -89,21 +91,25 @@ extern "C" void KernelMainNewStack(
   InitializeMainWindow();
   InitializeMouse();
   layer_manager->Draw({{0, 0}, ScreenSize()});
-// #@@range_end(main_function)
+
+  // day11b
+  InitializeLAPICTimer();
 
   char str[128];
-  unsigned int count = 0;
 
   while (true) {
-    ++count;
-    sprintf(str, "%010u", count);
+    __asm__("cli");
+    const auto tick = timer_manager->CurrentTick();
+    __asm__("sti");
+
+    sprintf(str, "%010lu", tick);
     FillRectangle(*main_window->Writer(), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
     WriteString(*main_window->Writer(), {24, 28}, str, {0, 0, 0});
     layer_manager->Draw(main_window_layer_id);
 
     __asm__("cli");
     if (main_queue->size() == 0) {
-      __asm__("sti");
+      __asm__("sti\n\thlt");
       continue;
     }
 
@@ -111,9 +117,13 @@ extern "C" void KernelMainNewStack(
     main_queue->pop_front();
     __asm__("sti");
 
+    // day11b
     switch (msg.type) {
     case Message::kInterruptXHCI:
       usb::xhci::ProcessEvents();
+      break;
+    case Message::kInterruptLAPICTimer:
+      printk("Timer interrupt\n");
       break;
     default:
       Log(kError, "Unknown message type: %d\n", msg.type);

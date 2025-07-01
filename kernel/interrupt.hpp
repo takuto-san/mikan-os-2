@@ -54,13 +54,24 @@ void SetIDTEntry(InterruptDescriptor& desc,
                  uint64_t offset,
                  uint16_t segment_selector);
 
+// day11c
+/**
+ * InterruptVector
+ *   割り込みベクタ番号を定義するためのクラス。
+ */
 class InterruptVector {
  public:
   enum Number {
     kXHCI = 0x40,
+    kLAPICTimer = 0x41,
   };
 };
 
+/**
+ * InterruptFrame
+ *   割り込み発生時にスタックに保存されるCPUレジスタの状態。
+ *   CPUが割り込みを検知すると、これらのレジスタが自動的にスタックに保存される。
+ */
 struct InterruptFrame {
   uint64_t rip;
   uint64_t cs;
@@ -69,6 +80,13 @@ struct InterruptFrame {
   uint64_t ss;
 };
 
+/** @brief 割り込み処理の完了を割り込みコントローラに通知する */
 void NotifyEndOfInterrupt();
 
+/**
+ * @brief 割り込み処理の初期化を行う
+ *
+ * 割り込み記述子テーブル（IDT）の設定などを行う
+ * @param msg_queue 割り込みによって発生したメッセージを格納するためのキュー
+ */
 void InitializeInterrupt(std::deque<Message>* msg_queue);
