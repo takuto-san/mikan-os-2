@@ -1,10 +1,39 @@
 #pragma once
 
-// day11b
+enum class LayerOperation {
+  Move, MoveRelative, Draw, DrawArea
+};
+
+// day11d, day11b
 struct Message {
   enum Type {
     kInterruptXHCI,
-    kInterruptLAPICTimer,
+    kTimerTimeout,
+    kKeyPush,
+    kLayer,
+    kLayerFinish,
   } type;
-};
 
+  uint64_t src_task;
+
+  // day11d
+  union {
+    struct {
+      unsigned long timeout;
+      int value;
+    } timer;
+
+    struct {
+      uint8_t modifier;
+      uint8_t keycode;
+      char ascii;
+    } keyboard;
+
+    struct {
+      LayerOperation op;
+      unsigned int layer_id;
+      int x, y;
+      int w, h;
+    } layer;
+  } arg;
+};

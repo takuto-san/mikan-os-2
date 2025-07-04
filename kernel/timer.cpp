@@ -1,9 +1,12 @@
+// day11b
 #include "timer.hpp"
 
+#include "acpi.hpp"
 #include "interrupt.hpp"
+#include "task.hpp"
 
 namespace {
-  // 定数とメモリマップドレジスタの定義
+  /** @brief 定数とメモリマップドレジスタの定義 */
   const uint32_t kCountMax = 0xffffffffu;
   volatile uint32_t& lvt_timer = *reinterpret_cast<uint32_t*>(0xfee00320);
   volatile uint32_t& initial_count = *reinterpret_cast<uint32_t*>(0xfee00380);
@@ -11,6 +14,7 @@ namespace {
   volatile uint32_t& divide_config = *reinterpret_cast<uint32_t*>(0xfee003e0);
 }
 
+// day11d, day11c
 /**
  * InitializeLAPICTimer
  *   ローカルAPICタイマを初期化する
@@ -19,13 +23,22 @@ namespace {
  *   割り込みベクタは InterruptVector::kLAPICTimer を使用する
  *   initial_countはInitial Countレジスタに設定する値
  */
-// day11c, day11b
 void InitializeLAPICTimer() {
   timer_manager = new TimerManager;
 
   divide_config = 0b1011; // divide 1:1
+  lvt_timer = 0b001 << 16; // masked, one-shot
+
+  StartLAPICTimer();
+  acpi::WaitMilliseconds(100);
+  const auto elapsed = LAPICTimerElapsed();
+  StopLAPICTimer();
+
+  lapic_timer_freq = static_cast<unsigned long>(elapsed) * 10;
+
+  divide_config = 0b1011; // divide 1:1
   lvt_timer = (0b010 << 16) | InterruptVector::kLAPICTimer; // not-masked, periodic
-  initial_count = 0x1000000u;
+  initial_count = lapic_timer_freq / kTimerFreq;
 }
 
 /**
@@ -56,21 +69,78 @@ void StopLAPICTimer() {
   initial_count = 0;
 }
 
+// day11d
+/**
+ * Timer 
+ *   Timerクラスのコンストラクタ
+ */
+Timer::Timer(unsigned long timeout, int value)
+    : timeout_{timeout}, value_{value} {
+}
+
+/**
+ * TimerManager 
+ *   TimerManagerクラスのコンストラクタ
+ */
+TimerManager::TimerManager() {
+  timers_.push(Timer{std::numeric_limits<unsigned long>::max(), -1});
+}
+
+/**
+ * AddTimer 
+ *   指定されたタイマをtimers_に追加する
+ */
+void TimerManager::AddTimer(const Timer& timer) {
+  timers_.push(timer);
+}
+
+// day11c, day11d
 /**
  * Tick
  *   割り込み回数を1だけ増やす
+ *   タイムアウト処理を行う
  */
-void TimerManager::Tick() {
+bool TimerManager::Tick() {
   ++tick_;
+
+  bool task_timer_timeout = false;
+  while (true) {
+    const auto& t = timers_.top();
+    if (t.Timeout() > tick_) {
+      break;
+    }
+
+    if (t.Value() == kTaskTimerValue) {
+      task_timer_timeout = true;
+      timers_.pop();
+      timers_.push(Timer{tick_ + kTaskTimerPeriod, kTaskTimerValue});
+      continue;
+    }
+
+    Message m{Message::kTimerTimeout};
+    m.arg.timer.timeout = t.Timeout();
+    m.arg.timer.value = t.Value();
+    task_manager->SendMessage(1, m);
+
+    timers_.pop();
+  }
+
+  return task_timer_timeout;
 }
 
 /** @brief タイマー管理クラスのグローバルインスタンス */
 TimerManager* timer_manager;
+unsigned long lapic_timer_freq;
 
 /**
  * LAPICTimerOnInterrupt
  *   タイマ割り込みのハンドラの中からTick()を呼び出す
  */
 void LAPICTimerOnInterrupt() {
-  timer_manager->Tick();
+  const bool task_timer_timeout = timer_manager->Tick();
+  NotifyEndOfInterrupt();
+
+  if (task_timer_timeout) {
+    task_manager->SwitchTask();
+  }
 }
