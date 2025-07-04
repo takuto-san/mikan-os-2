@@ -55,6 +55,8 @@ bool RSDP::IsValid() const {
   return true;
 }
 
+// day12a
+/** @brief データ構造全体の整合性を調べる */
 bool DescriptionHeader::IsValid(const char* expected_signature) const {
   if (strncmp(this->signature, expected_signature, 4) != 0) {
     Log(kDebug, "invalid signature: %.4s\n", this->signature);
@@ -67,17 +69,24 @@ bool DescriptionHeader::IsValid(const char* expected_signature) const {
   return true;
 }
 
+/** @brief XSDTのエントリにアクセスする添字演算子 */
 const DescriptionHeader& XSDT::operator[](size_t i) const {
   auto entries = reinterpret_cast<const uint64_t*>(&this->header + 1);
   return *reinterpret_cast<const DescriptionHeader*>(entries[i]);
 }
 
+/** @brief XSDTが保持するデータ構造のアドレスの個数を表す */
 size_t XSDT::Count() const {
   return (this->header.length - sizeof(DescriptionHeader)) / sizeof(uint64_t);
 }
 
 const FADT* fadt;
 
+// day12b
+/**
+ * WaitMilliseconds
+ *   指定したミリ秒だけ待つ
+ */
 void WaitMilliseconds(unsigned long msec) {
   const bool pm_timer_32 = (fadt->flags >> 8) & 1;
   const uint32_t start = IoIn32(fadt->pm_tmr_blk);
@@ -92,6 +101,7 @@ void WaitMilliseconds(unsigned long msec) {
   while (IoIn32(fadt->pm_tmr_blk) < end);
 }
 
+// day12a
 /**
  * Initialize
  *   ACPI関連機能の初期化を行う

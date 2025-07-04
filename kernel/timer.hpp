@@ -56,6 +56,8 @@ class TimerManager {
   std::priority_queue<Timer> timers_{};
 };
 
+// day12a
+/** @brief Local APICタイマの1カウントの時間を計り、その結果を記憶しておくためのグローバル変数 */
 extern TimerManager* timer_manager;
 extern unsigned long lapic_timer_freq;
 const int kTimerFreq = 100;

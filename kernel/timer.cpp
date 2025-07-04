@@ -14,12 +14,12 @@ namespace {
   volatile uint32_t& divide_config = *reinterpret_cast<uint32_t*>(0xfee003e0);
 }
 
-// day11d, day11c
+// day12b, day11d, day11c
 /**
  * InitializeLAPICTimer
  *   ローカルAPICタイマを初期化する
  *
- *   タイマの分周比を1:1に設定し、タイマモードをPeriodic（周期的）に設定する
+ *   1秒間隔でタイムアウトする
  *   割り込みベクタは InterruptVector::kLAPICTimer を使用する
  *   initial_countはInitial Countレジスタに設定する値
  */

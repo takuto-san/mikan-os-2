@@ -18,10 +18,14 @@
   UefiLib
   UefiApplicationEntryPoint
 
+# day11e
 [Guids]
   gEfiFileInfoGuid
+  gEfiAcpiTableGuid
 
+# day17a
 [Protocols]
   gEfiLoadedImageProtocolGuid
   gEfiLoadFileProtocolGuid
   gEfiSimpleFileSystemProtocolGuid
+  gEfiBlockIoProtocolGuid

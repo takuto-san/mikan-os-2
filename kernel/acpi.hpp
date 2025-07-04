@@ -29,6 +29,12 @@ struct RSDP {
   bool IsValid() const;
 } __attribute__((packed));
 
+// day12a
+/**
+ * DescriptionHeader
+ *   XSDTやそこから参照されるFADTなどの各種ACPIテーブルの
+ *   先頭に必ず配置される共通のヘッダー構造体
+ */
 struct DescriptionHeader {
   char signature[4];
   uint32_t length;
@@ -43,6 +49,11 @@ struct DescriptionHeader {
   bool IsValid(const char* expected_signature) const;
 } __attribute__((packed));
 
+/**
+ * XSDT
+ *   XSDTの構造体の定義
+ *   構造体のメンバ変数はACPIの仕様で決められている
+ */
 struct XSDT {
   DescriptionHeader header;
 
@@ -50,6 +61,11 @@ struct XSDT {
   size_t Count() const;
 } __attribute__((packed));
 
+/**
+ * FADT
+ *   FADTの構造体の定義
+ *   構造体のメンバ変数はACPIの仕様で決められている
+ */
 struct FADT {
   DescriptionHeader header;
 
