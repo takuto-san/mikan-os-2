@@ -146,6 +146,7 @@ extern "C" void KernelMainNewStack(
 
   // day11e, day11c, day11b
   acpi::Initialize(acpi_table);
+  /** @brief LocalAPICタイマを開始し、特定の時間ごとに割り込みを発生させる */
   InitializeLAPICTimer();
 
   const int kTextboxCursorTimer = 1;
@@ -153,6 +154,8 @@ extern "C" void KernelMainNewStack(
   timer_manager->AddTimer(Timer{kTimer05Sec, kTextboxCursorTimer});
   bool textbox_cursor_visible = false;
 
+  // day13a
+  /** @brief タスク切り替えを発生させる */
   InitializeTask();
   Task& main_task = task_manager->CurrentTask();
   const uint64_t task_terminal_id = task_manager->NewTask()

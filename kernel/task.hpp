@@ -16,6 +16,12 @@
 #include "error.hpp"
 #include "message.hpp"
 
+// day13a
+/**
+ * TaskContext
+ *   コンテキストを保存するための構造体
+ *   コンテキストを切り替えるときに値の保存と復帰が必要なレジスタを全て含んでいる
+ */
 struct TaskContext {
   uint64_t cr3, rip, rflags, reserved1; // offset 0x00
   uint64_t cs, ss, fs, gs; // offset 0x20
@@ -26,12 +32,19 @@ struct TaskContext {
 
 using TaskFunc = void (uint64_t, int64_t);
 
+
 class TaskManager;
 
+// day13d
+/**
+ * Task
+ *   1つのタスクを表す
+ *   タスクは固有のIDとスタック領域、コンテキスト構造体を持つ
+ */
 class Task {
  public:
   static const int kDefaultLevel = 1;
-  static const size_t kDefaultStackBytes = 4096;
+  static const size_t kDefaultStackBytes = 4096; //タスク用スタックの大きさ
 
   Task(uint64_t id);
   Task& InitContext(TaskFunc* f, int64_t data);
@@ -59,6 +72,13 @@ class Task {
   friend TaskManager;
 };
 
+/**
+ * TaskManager
+ *   複数のタスクを管理する
+ * 
+ *   Taskの生成と生成したTaskのインスタンスを保存しておく役目がある
+ *   タスク切り替えの機能（SwitchTask()）も持たせる
+ */
 class TaskManager {
  public:
   // level: 0 = lowest, kMaxLevel = highest

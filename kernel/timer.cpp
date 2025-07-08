@@ -99,6 +99,8 @@ void TimerManager::AddTimer(const Timer& timer) {
  * Tick
  *   割り込み回数を1だけ増やす
  *   タイムアウト処理を行う
+ * 
+ * @return タスク切り替え用タイマがタイムアウトした場合はtrueを返す
  */
 bool TimerManager::Tick() {
   ++tick_;
@@ -135,6 +137,7 @@ unsigned long lapic_timer_freq;
 /**
  * LAPICTimerOnInterrupt
  *   タイマ割り込みのハンドラの中からTick()を呼び出す
+ *   タスク切り替えがタイムアウトならSwitchTask()を呼び出す
  */
 void LAPICTimerOnInterrupt() {
   const bool task_timer_timeout = timer_manager->Tick();

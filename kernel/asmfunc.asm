@@ -76,6 +76,9 @@ SetCR3:
     mov cr3, rdi
     ret
 
+; day13a
+; GetCR3
+;   CR3レジスタの値を取得する
 global GetCR3  ; uint64_t GetCR3();
 GetCR3:
     mov rax, cr3
@@ -92,6 +95,14 @@ KernelMain:
     hlt
     jmp .fin
 
+; day13b
+; SwitchContext
+;   レジスタを操作してコンテキストを切り替える
+;
+;   現在実行中のコンテキストを第2引数RSIが指すメモリ領域に保存し、
+;   第1引数が指すメモリ領域（task_a_ctxから）からCPUのレジスタ群を復帰させる
+;   やっていることは単純で、各レジスタをコンテキスト構造体の対応するフィールドにコピーしたり、
+:   逆にコンテキスト構造体から各レジスタに値をコピーするだけ
 global SwitchContext
 SwitchContext:  ; void SwitchContext(void* next_ctx, void* current_ctx);
     mov [rsi + 0x40], rax

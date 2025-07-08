@@ -16,24 +16,35 @@ namespace {
   }
 } // namespace
 
+/** @brief Taskクラスのコンストラクタ。指定されたタスクIDをid_に設定する */
 Task::Task(uint64_t id) : id_{id}, msgs_{} {
 }
 
+// day13a
+/**
+ * InitContext
+ *   タスクのコンテキストを初期化する
+ *   stack_やcontext_に値を設定する
+ * 
+ * @param f    : タスクの開始アドレス（実行する関数ポインタ）
+ * @param data : タスクに渡す引数（fの第2引数になる）
+ * @return     : Task& 自身への参照
+ */
 Task& Task::InitContext(TaskFunc* f, int64_t data) {
   const size_t stack_size = kDefaultStackBytes / sizeof(stack_[0]);
   stack_.resize(stack_size);
   uint64_t stack_end = reinterpret_cast<uint64_t>(&stack_[stack_size]);
 
   memset(&context_, 0, sizeof(context_));
-  context_.cr3 = GetCR3();
-  context_.rflags = 0x202;
-  context_.cs = kKernelCS;
-  context_.ss = kKernelSS;
-  context_.rsp = (stack_end & ~0xflu) - 8;
+  context_.cr3 = GetCR3();                      // 現在CR3に設定されている値をコピーする（アセンブラ関数）
+  context_.rflags = 0x202;                      // TaskXX() を実行する際のRFLAGSの値を指定する。ビット9はIF（割り込みフラグ）でここに1を設定すると割り込みが許可される
+  context_.cs = kKernelCS;                      // メイン関数を実行するときと同じセグメントレジスタを設定
+  context_.ss = kKernelSS;                      // メイン関数を実行するときと同じセグメントレジスタを設定
+  context_.rsp = (stack_end & ~0xflu) - 8;      // スタックポインタの初期値を設定
 
-  context_.rip = reinterpret_cast<uint64_t>(f);
-  context_.rdi = id_;
-  context_.rsi = data;
+  context_.rip = reinterpret_cast<uint64_t>(f); // SwitchContext() を最初に実行したとき、ここで設定したアドレスへとジャンプすることになる
+  context_.rdi = id_;                           // TaskXX() の引数となる値
+  context_.rsi = data;                          // TaskXX() の引数となる値
 
   // MXCSR のすべての例外をマスクする
   *reinterpret_cast<uint32_t*>(&context_.fxsave_area[24]) = 0x1f80;
@@ -41,6 +52,13 @@ Task& Task::InitContext(TaskFunc* f, int64_t data) {
   return *this;
 }
 
+/** 
+ * Context
+ *   タスクのコンテキスト構造体への参照を返す
+ * 
+ *   値ではなく参照を返す。なぜなら、コンテキスト構造体のアドレスをSwitchContextに渡す必要があるため
+ *   SwitchContext()はコンテキストを切り替える際、そのアドレスが指すメモリ領域にレジスタ値を保存する
+ */
 TaskContext& Task::Context() {
   return context_;
 }
@@ -87,11 +105,24 @@ TaskManager::TaskManager() {
   running_[0].push_back(&idle);
 }
 
+/**
+ * NewTask
+ *   新しいタスクのインスタンスを生成する
+ * 
+ *  　最新のタスクIDを表すlatest_id_の値を使ってTaskクラスのインスタンスを生成し、
+ *  　tasks_の末尾に追加する
+ */
 Task& TaskManager::NewTask() {
   ++latest_id_;
   return *tasks_.emplace_back(new Task{latest_id_});
 }
 
+// day13b
+/**
+ * SwitchTask
+ *   タスクを切り替える
+ *   現在実行中のタスクとその次のタスクを取得し、次のタスクが持つコンテキストへと実行を切り替える
+ */
 void TaskManager::SwitchTask(bool current_sleep) {
   auto& level_queue = running_[current_level_];
   Task* current_task = level_queue.front();
@@ -114,7 +145,8 @@ void TaskManager::SwitchTask(bool current_sleep) {
   }
 
   Task* next_task = running_[current_level_].front();
-
+  
+  /** @brief アセンブラで定義したレジスタを操作してコンテキストを切り替える関数を呼び出す */
   SwitchContext(&next_task->Context(), &current_task->Context());
 }
 
@@ -220,6 +252,7 @@ void TaskManager::ChangeLevelRunning(Task* task, int level) {
 
 TaskManager* task_manager;
 
+/** @brief TaskManagerのインスタンスを生成し、グローバル変数task_managerに設定 */
 void InitializeTask() {
   task_manager = new TaskManager;
 
