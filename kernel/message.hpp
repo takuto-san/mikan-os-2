@@ -5,6 +5,14 @@ enum class LayerOperation {
 };
 
 // day11d, day11b
+/**
+ * Message
+ *   タスク間通信で用いるメッセージの構造体
+ *
+ *   タイマーのタイムアウト、キー入力、レイヤー操作など、
+ *   OS内から送られてくる割り込み関連のメッセージを保持する
+ *   `type` メンバーでメッセージの種類を識別する
+ */
 struct Message {
   enum Type {
     kInterruptXHCI,

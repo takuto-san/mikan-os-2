@@ -52,6 +52,7 @@ class Task {
   uint64_t ID() const;
   Task& Sleep();
   Task& Wakeup();
+  // day14b
   void SendMessage(const Message& msg);
   std::optional<Message> ReceiveMessage();
 
@@ -62,16 +63,24 @@ class Task {
   uint64_t id_;
   std::vector<uint64_t> stack_;
   alignas(16) TaskContext context_;
+  // day14b
+  /** @brief 
+   * main.cppのmsg_queueに割り込み関連のメッセージが格納されていたのを、メッセージキューmsgs_を付け足したことで、
+   * メインタスクだけでなく全てのタスクにmain_queueと同様の機能が備わることになった
+   */
   std::deque<Message> msgs_;
   unsigned int level_{kDefaultLevel};
   bool running_{false};
 
+  // day14c
+  /** @brief level: そのタスクの現在のレベルを表す running_: タスクが実行状態または実行可能状態であれば真となる */
   Task& SetLevel(int level) { level_ = level; return *this; }
   Task& SetRunning(bool running) { running_ = running; return *this; }
 
   friend TaskManager;
 };
 
+// day13d
 /**
  * TaskManager
  *   複数のタスクを管理する
@@ -88,16 +97,19 @@ class TaskManager {
   Task& NewTask();
   void SwitchTask(bool current_sleep = false);
 
+  // day14a
   void Sleep(Task* task);
   Error Sleep(uint64_t id);
   void Wakeup(Task* task, int level = -1);
   Error Wakeup(uint64_t id, int level = -1);
+  // day14b
   Error SendMessage(uint64_t id, const Message& msg);
   Task& CurrentTask();
 
  private:
   std::vector<std::unique_ptr<Task>> tasks_{};
   uint64_t latest_id_{0};
+  // day14c
   std::array<std::deque<Task*>, kMaxLevel + 1> running_{};
   int current_level_{kMaxLevel};
   bool level_changed_{false};

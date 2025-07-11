@@ -35,6 +35,7 @@
 // day11e
 #include "acpi.hpp"
 #include "keyboard.hpp"
+// day13a
 #include "task.hpp"
 #include "terminal.hpp"
 
@@ -157,6 +158,7 @@ extern "C" void KernelMainNewStack(
   // day13a
   /** @brief タスク切り替えを発生させる */
   InitializeTask();
+  // day14b
   Task& main_task = task_manager->CurrentTask();
   const uint64_t task_terminal_id = task_manager->NewTask()
     .InitContext(TaskTerminal, 0)
@@ -196,6 +198,8 @@ extern "C" void KernelMainNewStack(
     WriteString(*main_window->InnerWriter(), {20, 4}, str, {0, 0, 0});
     layer_manager->Draw(main_window_layer_id);
 
+    // day14b
+    /** @brief メインタスクのメッセージキューが空ならスリープする */
     __asm__("cli");
     auto msg = main_task.ReceiveMessage();
     if (!msg) {

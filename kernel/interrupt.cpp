@@ -32,6 +32,8 @@ void NotifyEndOfInterrupt() {
 namespace {
   __attribute__((interrupt))
   void IntHandlerXHCI(InterruptFrame* frame) {
+    // day14b
+    /** @brief msg_queue（main.cpp）の代わりに、task_manager（task.cpp）のメッセージキューを使うように修正 */
     task_manager->SendMessage(1, Message{Message::kInterruptXHCI});
     NotifyEndOfInterrupt();
   }

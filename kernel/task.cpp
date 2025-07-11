@@ -6,6 +6,7 @@
 
 namespace {
   template <class T, class U>
+  /** @brief 削除する要素を末尾に移動させる */
   void Erase(T& c, const U& value) {
     auto it = std::remove(c.begin(), c.end(), value);
     c.erase(it, c.end());
@@ -52,6 +53,7 @@ Task& Task::InitContext(TaskFunc* f, int64_t data) {
   return *this;
 }
 
+// day13a
 /** 
  * Context
  *   タスクのコンテキスト構造体への参照を返す
@@ -63,6 +65,7 @@ TaskContext& Task::Context() {
   return context_;
 }
 
+/** @brief タスクのIDを返す */
 uint64_t Task::ID() const {
   return id_;
 }
@@ -77,11 +80,21 @@ Task& Task::Wakeup() {
   return *this;
 }
 
+// day14b
+/** 
+ * SendMessage
+ *   メッセージキューにメッセージを追加し、寝ていれば起こす
+ *   メッセージをキューに追加した後Wakeup()を呼び出すことで、タスクが寝ていた場合に起こす
+ */
 void Task::SendMessage(const Message& msg) {
   msgs_.push_back(msg);
   Wakeup();
 }
 
+/** 
+ * ReceiveMessage
+ *   メッセージキューからメッセージを1つ取り出す
+ */
 std::optional<Message> Task::ReceiveMessage() {
   if (msgs_.empty()) {
     return std::nullopt;
@@ -92,12 +105,22 @@ std::optional<Message> Task::ReceiveMessage() {
   return m;
 }
 
+// day14a
+/** 
+ * TaskManager
+ *   TaskManagerクラスのコンストラクタ
+ * 
+ *   新しく生成されたタスクの優先度レベルやタスクの状態（実行、実行可能、スリープ）を設定する
+ *   コンストラクタを実行し終わった時点で、ランキューにはタスクが1つだけ追加された状態になる
+ */
 TaskManager::TaskManager() {
   Task& task = NewTask()
+    // day14c
     .SetLevel(current_level_)
     .SetRunning(true);
   running_[current_level_].push_back(&task);
 
+  // day14d
   Task& idle = NewTask()
     .InitContext(TaskIdle, 0)
     .SetLevel(0)
@@ -117,11 +140,14 @@ Task& TaskManager::NewTask() {
   return *tasks_.emplace_back(new Task{latest_id_});
 }
 
-// day13b
+// day14c, day13b
 /**
  * SwitchTask
- *   タスクを切り替える
  *   現在実行中のタスクとその次のタスクを取得し、次のタスクが持つコンテキストへと実行を切り替える
+ *
+ *   current_sleep（現在実行中のタスクをスリープさせるかどうか）がFalseの場合のみ、ランキューの末尾にタスクを追加する（Trueならランキューに追加しない）
+ *   現在実行中のレベルのランキューが空になったとき（level_changed == True）、
+ *   高いレベルのランキューから順に見ていって、タスクが1つ以上登録されているランキューを見つけたらそのレベルをcurrent_level_に設定する
  */
 void TaskManager::SwitchTask(bool current_sleep) {
   auto& level_queue = running_[current_level_];
@@ -150,6 +176,15 @@ void TaskManager::SwitchTask(bool current_sleep) {
   SwitchContext(&next_task->Context(), &current_task->Context());
 }
 
+// day14a
+/**
+ * Sleep
+ *   指定したタスクをスリープさせる
+ * 
+ *   タスクが実行可能状態かどうかをタスクのrunningフラグによって判定する。実行可能状態であればrunningフラグを下げる
+ *   現在実行中のタスク（自分自身）をスリープさせるには、タスクの切り替えをしなければならないため、SwitchTask()を使ってタスクを切り替える
+ *   taskが現在進行中のタスクでない（他のタスクをスリープさせる）場合、そのタスクが属するレベルtのランキューからそのタスクを削除する
+ */
 void TaskManager::Sleep(Task* task) {
   if (!task->Running()) {
     return;
@@ -165,6 +200,7 @@ void TaskManager::Sleep(Task* task) {
   Erase(running_[task->Level()], task);
 }
 
+/** @brief タスクIDで指定できるバージョンのSleep() */
 Error TaskManager::Sleep(uint64_t id) {
   auto it = std::find_if(tasks_.begin(), tasks_.end(),
                          [id](const auto& t){ return t->ID() == id; });
@@ -176,6 +212,14 @@ Error TaskManager::Sleep(uint64_t id) {
   return MAKE_ERROR(Error::kSuccess);
 }
 
+/**
+ * Wakeup
+ *   指定したタスクを起こす（実行可能状態にする）
+ * 
+ *   指定されたタスクがランキューに存在しなければ（スリープ中であれば）ランキューの末尾に追加する
+ *   スリープ中のタスクを起こす（runningフラグを立てる）
+ *   動作中タスクのレベルを変える（指定したタスクの現在の状態にかかわらず、指定したレベルで動作させる）
+ */
 void TaskManager::Wakeup(Task* task, int level) {
   if (task->Running()) {
     ChangeLevelRunning(task, level);
@@ -196,6 +240,7 @@ void TaskManager::Wakeup(Task* task, int level) {
   return;
 }
 
+/** @brief タスクIDで指定できるバージョンのWakeup() */
 Error TaskManager::Wakeup(uint64_t id, int level) {
   auto it = std::find_if(tasks_.begin(), tasks_.end(),
                          [id](const auto& t){ return t->ID() == id; });
@@ -207,6 +252,11 @@ Error TaskManager::Wakeup(uint64_t id, int level) {
   return MAKE_ERROR(Error::kSuccess);
 }
 
+// day14b
+/**
+ * SendMessage
+ *   指定されたタスクをtasks_から探してきて、そのタスクのSendMessage()を呼び出す
+ */
 Error TaskManager::SendMessage(uint64_t id, const Message& msg) {
   auto it = std::find_if(tasks_.begin(), tasks_.end(),
                          [id](const auto& t){ return t->ID() == id; });
@@ -218,10 +268,20 @@ Error TaskManager::SendMessage(uint64_t id, const Message& msg) {
   return MAKE_ERROR(Error::kSuccess);
 }
 
+// day14b
+/** @brief 現在実行中のタスクを返す。すなわち、ランキューの先頭を返す */
 Task& TaskManager::CurrentTask() {
   return *running_[current_level_].front();
 }
 
+/**
+ * ChangeLevelRunning
+ *   動作中のタスクのレベルを変える
+ * 　
+ *   現在実行中のタスクの場合、そのタスクを現在のランキューから取り除き、目的のレベルのランキューに追加する
+ *   その後、current_level_を目的のレベルに更新する（SwitchTask()は「current_level_のランキューの先頭にあるタスク」を現在実行中のタスクだと認識する）
+ *   他のタスクの実行レベルを変える場合、そのタスクが現在属しているレベルのランキューから削除し、目的のレベルのランキューに追加し直す
+ */
 void TaskManager::ChangeLevelRunning(Task* task, int level) {
   if (level < 0 || level == task->Level()) {
     return;
